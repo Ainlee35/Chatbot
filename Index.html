@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NEDC Chatbot</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f6f8fa;
+      margin: 0;
+      padding: 0;
+    }
+
+    .chatbot-container {
+      width: 100%;
+      max-width: 450px;
+      margin: 30px auto;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chat-header {
+      background: #004aad;
+      color: white;
+      padding: 12px 16px;
+      font-size: 18px;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .chat-box {
+      flex: 1;
+      height: 450px;
+      padding: 12px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .message {
+      margin: 8px 0;
+      padding: 10px 14px;
+      border-radius: 10px;
+      max-width: 85%;
+    }
+
+    .user-message {
+      background: #004aad;
+      color: white;
+      align-self: flex-end;
+    }
+
+    .bot-message {
+      background: #f1f1f1;
+      color: #333;
+      align-self: flex-start;
+    }
+
+    .input-area {
+      display: flex;
+      border-top: 1px solid #ddd;
+    }
+
+    .input-area input {
+      flex: 1;
+      border: none;
+      padding: 12px;
+      font-size: 16px;
+      outline: none;
+    }
+
+    .input-area button {
+      background: #004aad;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .input-area button:hover {
+      background: #0066cc;
+    }
+
+    .language-select {
+      background: white;
+      color: #004aad;
+      border-radius: 6px;
+      border: none;
+      font-weight: bold;
+      padding: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="chatbot-container">
+    <div class="chat-header">
+      💬 NEDC Assistant
+      <select id="language" class="language-select" onchange="changeLanguage()">
+        <option value="en">🇬🇧 English</option>
+        <option value="sw">🇹🇿 Swahili</option>
+      </select>
+    </div>
+    <div class="chat-box" id="chatBox">
+      <div class="bot-message message" id="welcomeMsg">
+        Hello! 👋 I'm NEDC’s virtual assistant. How can I help you today?
+      </div>
+    </div>
+    <div class="input-area">
+      <input type="text" id="userInput" placeholder="Type your message..." />
+      <button onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+  <script>
+    const chatBox = document.getElementById("chatBox");
+    const input = document.getElementById("userInput");
+    const languageSelect = document.getElementById("language");
+    const welcomeMsg = document.getElementById("welcomeMsg");
+    let currentLang = "en";
+
+    function changeLanguage() {
+      currentLang = languageSelect.value;
+      if (currentLang === "sw") {
+        welcomeMsg.textContent = "Habari! 👋 Mimi ni msaidizi wa kidijitali wa NEDC. Naweza kukusaidiaje leo?";
+        input.placeholder = "Andika ujumbe wako...";
+      } else {
+        welcomeMsg.textContent = "Hello! 👋 I'm NEDC’s virtual assistant. How can I help you today?";
+        input.placeholder = "Type your message...";
+      }
+    }
+
+    async function sendMessage() {
+      const userText = input.value.trim();
+      if (!userText) return;
+
+      appendMessage(userText, "user-message");
+      input.value = "";
+
+      const botReply = await getBotReply(userText, currentLang);
+      appendMessage(botReply, "bot-message");
+    }
+
+    function appendMessage(text, className) {
+      const msg = document.createElement("div");
+      msg.classList.add("message", className);
+      msg.textContent = text;
+      chatBox.appendChild(msg);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    async function getBotReply(prompt, lang) {
+      const systemPrompt =
+        lang === "sw"
+          ? "Wewe ni msaidizi wa kirafiki wa Kituo cha Kitaifa cha Maendeleo ya Biashara (NEDC) nchini Tanzania. Jibu kwa Kiswahili kuhusu uanachama, huduma, mawasiliano, na shughuli."
+          : "You are a helpful assistant for the National Enterprise Development Centre (NEDC) in Tanzania. Answer professionally in English about membership, services, contact info, and events.";
+
+      try {
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "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" // ← Replace with your real key
+          },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: prompt }
+            ],
+          }),
+        });
+
+        const data = await response.json();
+        return data.choices[0].message.content.trim();
+      } catch (error) {
+        console.error("Chatbot error:", error);
+        return lang === "sw"
+          ? "Samahani, kuna hitilafu ya muunganisho. Tafadhali jaribu tena baadae."
+          : "Sorry, I’m having trouble connecting right now. Please try again later.";
+      }
+    }
+  </script>
+</body>
+</html>
